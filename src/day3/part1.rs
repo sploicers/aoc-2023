@@ -2,8 +2,35 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Hash, Eq, PartialEq)]
 enum Tile {
-    Symbol,
-    Part(u32),
+    Symbol(char),
+    Part(MachinePart),
+}
+
+#[derive(Debug, Hash, Eq, PartialEq)]
+struct MachinePart {
+    pub part_number: u32,
+    pub start: usize,
+    pub end: usize,
+    pub row: usize,
+}
+
+impl MachinePart {
+    pub fn bounding_box(&self) -> impl Iterator<Item = (i32, i32)> {
+        let mut surrounding_points: Vec<(i32, i32)> = vec![];
+        let left = self.start as i32 - 1;
+        let right = (self.end + 1) as i32;
+
+        // to the left and to the right
+        surrounding_points.push((left, self.row as i32));
+        surrounding_points.push((right as i32, self.row as i32));
+
+        // above and below
+        for x in left..=right {
+            surrounding_points.push((x, self.row as i32 - 1));
+            surrounding_points.push((x, (self.row + 1) as i32));
+        }
+        surrounding_points.into_iter()
+    }
 }
 
 #[derive(Debug)]
@@ -29,7 +56,7 @@ impl Grid {
                         }
                     } else {
                         if current_char != '.' {
-                            coordinates.insert((x, y), Tile::Symbol);
+                            coordinates.insert((x, y), Tile::Symbol(current_char));
                         }
                         if let Some(num_start) = last_num_start_pos {
                             let part_number: u32 = String::from_iter(line[num_start..x].chars())
@@ -37,13 +64,39 @@ impl Grid {
                                 .expect("Fatal - failed to parse supposed part number");
 
                             for num_x in num_start..x {
-                                coordinates.insert((num_x, y), Tile::Part(part_number));
+                                coordinates.insert(
+                                    (num_x, y),
+                                    Tile::Part(MachinePart {
+                                        part_number,
+                                        start: num_start,
+                                        end: x - 1,
+                                        row: y,
+                                    }),
+                                );
                             }
                             last_num_start_pos = None;
                         }
                     }
                     x += 1;
                 } else {
+                    if let Some(num_start) = last_num_start_pos {
+                        let part_number: u32 = String::from_iter(line[num_start..x].chars())
+                            .parse()
+                            .expect("Fatal - failed to parse supposed part number");
+
+                        for num_x in num_start..x {
+                            coordinates.insert(
+                                (num_x, y),
+                                Tile::Part(MachinePart {
+                                    part_number,
+                                    start: num_start,
+                                    end: x - 1,
+                                    row: y,
+                                }),
+                            );
+                        }
+                    }
+
                     break;
                 }
             }
@@ -56,41 +109,28 @@ impl Grid {
         self.coordinates.get(&(x, y))
     }
 
-    pub fn neighbours(&self, x: usize, y: usize) -> impl Iterator<Item = &Tile> {
-        let mut neighbours: Vec<Option<&Tile>> = vec![];
-        for y0 in -1..=1 {
-            for x0 in -1..=1 {
-                if !(x == 0 && y == 0) {
-                    neighbours.push(self.get((x as i32 + x0) as usize, (y as i32 + y0) as usize))
-                }
-            }
-        }
-        neighbours.into_iter().flatten()
-    }
-
     pub fn part_number_total(&self) -> u32 {
         let mut total = 0;
-        let mut parts_uniq: HashSet<&Tile> = HashSet::new();
+        let mut parts_uniq: HashSet<&MachinePart> = HashSet::new();
 
-        for ((x, y), tile) in self.coordinates.iter() {
+        for (_, tile) in self.coordinates.iter() {
             match tile {
-                Tile::Symbol => {
-                    for neighbour in self.neighbours(*x, *y) {
-                        match neighbour {
-                            Tile::Part(_) => {
-                                parts_uniq.insert(neighbour);
-                            }
-                            _ => (),
-                        }
-                    }
+                Tile::Part(part) => {
+                    parts_uniq.insert(part);
                 }
                 _ => (),
             }
         }
-        for t in parts_uniq {
-            match t {
-                Tile::Part(part_num) => total += part_num,
-                _ => (),
+        for p in parts_uniq {
+            for (x, y) in p.bounding_box() {
+                match self.get(x as usize, y as usize) {
+                    Some(Tile::Symbol(c)) => {
+                        println!("{}: {}", p.part_number, c);
+                        total += p.part_number;
+                        break;
+                    }
+                    _ => {}
+                }
             }
         }
         total
