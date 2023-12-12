@@ -109,6 +109,18 @@ impl Grid {
         self.coordinates.get(&(x, y))
     }
 
+    pub fn neighbours(&self, x: usize, y: usize) -> impl Iterator<Item = &Tile> {
+        let mut neighbours: Vec<Option<&Tile>> = vec![];
+        for y0 in -1..=1 {
+            for x0 in -1..=1 {
+                if !(x == 0 && y == 0) {
+                    neighbours.push(self.get((x as i32 + x0) as usize, (y as i32 + y0) as usize))
+                }
+            }
+        }
+        neighbours.into_iter().flatten()
+    }
+
     pub fn part_number_total(&self) -> u32 {
         let mut total = 0;
         let mut parts_uniq: HashSet<&MachinePart> = HashSet::new();
@@ -135,8 +147,40 @@ impl Grid {
         }
         total
     }
+
+    pub fn gear_ratio_total(&self) -> u32 {
+        let mut total = 0;
+
+        for ((x, y), tile) in self.coordinates.iter() {
+            match tile {
+                Tile::Symbol('*') => {
+                    let neighbouring_parts: HashSet<&u32> = self
+                        .neighbours(*x, *y)
+                        .filter_map(|n| match n {
+                            Tile::Part(MachinePart { part_number, .. }) => Some(part_number),
+                            _ => None,
+                        })
+                        .collect();
+                    if neighbouring_parts.len() == 2 {
+                        let mut ratio = 1;
+
+                        for val in neighbouring_parts {
+                            ratio *= val;
+                        }
+                        total += ratio;
+                    }
+                }
+                _ => (),
+            }
+        }
+        total
+    }
 }
 
-pub fn solution(lines: impl Iterator<Item = String>) -> u32 {
+pub fn part1(lines: impl Iterator<Item = String>) -> u32 {
     Grid::from_lines(lines).part_number_total()
+}
+
+pub fn part2(lines: impl Iterator<Item = String>) -> u32 {
+    Grid::from_lines(lines).gear_ratio_total()
 }

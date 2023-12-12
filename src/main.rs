@@ -4,6 +4,5 @@ mod day3;
 mod util;
 
 fn main() {
-	println!("{}", day3::part1::solution(read_input_lines()));
+    println!("{}", day3::part2(read_input_lines()));
 }
-
