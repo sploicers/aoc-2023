@@ -1,15 +1,25 @@
-use std::{env, io::{Read, self, BufReader, BufRead}, fs::File};
+use std::{
+    env,
+    fs::File,
+    io::{self, BufRead, BufReader, Read},
+};
 
+#[allow(unused)]
 pub fn read_input_lines() -> impl Iterator<Item = String> {
-	let reader: Box<dyn Read> = if let Some(filename) = filename_from_args() {
-		Box::new(File::open(&filename).expect(&format!("No such file {}!", filename)))
-	} else {
-		Box::new(io::stdin().lock())
-	};
-	let buf = BufReader::new(reader);
-	buf.lines().flat_map(Result::ok)
+    BufReader::new(get_input_reader())
+        .lines()
+        .flat_map(Result::ok)
+}
+
+#[allow(unused)]
+pub fn get_input_reader() -> Box<dyn Read> {
+    if let Some(filename) = filename_from_args() {
+        Box::new(File::open(&filename).expect(&format!("No such file {}!", filename)))
+    } else {
+        Box::new(io::stdin().lock())
+    }
 }
 
 fn filename_from_args() -> Option<String> {
-	env::args().skip(1).collect::<Vec<_>>().first().cloned()
+    env::args().skip(1).collect::<Vec<_>>().first().cloned()
 }
