@@ -1,2 +1,2 @@
 pub mod day4;
-pub use day4::part1;
+pub use day4::{part1,part2};
