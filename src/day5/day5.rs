@@ -1,121 +1,146 @@
 use std::{
-    collections::HashMap,
-    io::{BufRead, BufReader, Read},
+	collections::HashMap,
+	io::{BufRead, BufReader, Read},
 };
 
 #[derive(Debug)]
 struct Range {
-    start: u32,
-    end: u32,
+	start: u64,
+	end: u64,
 }
 
 #[derive(Debug)]
 struct SeedMap {
-    pub source: String,
-    pub dest: String,
-    source_ranges: Vec<Range>,
-    dest_ranges: Vec<Range>,
+	pub dest: String,
+	ranges: Vec<(Range, Range)>,
 }
 
 impl Range {
-    pub fn includes(&self, num: u32) -> bool {
-        num >= self.start && num <= self.end
-    }
+	pub fn includes(&self, num: u64) -> bool {
+		num >= self.start && num < self.end
+	}
 
-    pub fn pair_from(line: &str) -> (Self, Self) {
-        let parts: Vec<u32> = line
-            .split_whitespace()
-            .take(3)
-            .filter_map(|part| part.parse::<u32>().ok())
-            .collect();
+	pub fn pair_from(line: &str) -> (Self, Self) {
+		let parts: Vec<u64> = line
+			.split_whitespace()
+			.take(3)
+			.filter_map(|part| part.parse::<u64>().ok())
+			.collect();
 
-        if let [dest_range_start, src_range_start, len] = &parts[..] {
-            let dest_range = Self {
-                start: *dest_range_start,
-                end: dest_range_start + len,
-            };
-            let src_range = Self {
-                start: *src_range_start,
-                end: src_range_start + len,
-            };
-            (src_range, dest_range)
-        } else {
-            panic!("Malformed line")
-        }
-    }
+		if let [dest_range_start, src_range_start, len] = &parts[..] {
+			let dest_range = Self {
+				start: *dest_range_start,
+				end: dest_range_start + len,
+			};
+			let src_range = Self {
+				start: *src_range_start,
+				end: src_range_start + len,
+			};
+			(src_range, dest_range)
+		} else {
+			panic!("Malformed line")
+		}
+	}
 }
 
 impl SeedMap {
-    pub fn lookup(&self, num: u32) -> u32 {
-        self.source_ranges
-            .iter()
-            .find(|range| range.includes(num))
-            .map(|range| num - range.end + range.start)
-            .unwrap_or(num) // unmapped values are unchanged.
-    }
+	pub fn lookup(&self, num: u64) -> u64 {
+		if let Some((src, dest)) = self.ranges.iter().find(|(src, _)| src.includes(num)) {
+			let offset = num - src.start;
+			dest.start + offset
+		} else {
+			num
+		}
+	}
 
-    pub fn from(section: &str) -> Self {
-        let lines: Vec<&str> = section.lines().collect();
-        let header = lines.first().expect("Section header should not be empty");
+	pub fn from(section: &str) -> Self {
+		let lines: Vec<&str> = section.lines().collect();
+		let header = lines.first().expect("Section header should not be empty");
 
-        let (source, dest) = header
-            .trim()
-            .strip_suffix(" map:")
-            .and_then(|rest| rest.split_once("-to-"))
-            .expect("Section header should be of the form '[source]-to-[destination] map:'");
+		let (_, dest) = header
+			.trim()
+			.strip_suffix(" map:")
+			.and_then(|rest| rest.split_once("-to-"))
+			.expect("Section header should be of the form '[source]-to-[destination] map:'");
 
-        let mut source_ranges: Vec<Range> = vec![];
-        let mut dest_ranges: Vec<Range> = vec![];
-        for (dest_range, src_range) in lines.into_iter().skip(1).map(Range::pair_from) {
-            source_ranges.push(src_range);
-            dest_ranges.push(dest_range);
-        }
-
-        Self {
-            source: String::from(source),
-            dest: String::from(dest),
-            source_ranges,
-            dest_ranges,
-        }
-    }
+		let ranges = lines.into_iter().skip(1).map(Range::pair_from).collect();
+		
+		Self {
+			dest: String::from(dest),
+			ranges
+		}
+	}
 }
 
-fn split_on_spaces_and_parse_nums(s: &str) -> Vec<u32> {
-    s.split_whitespace()
-        .map(|number_str| number_str.parse())
-        .flatten()
-        .collect()
+fn split_on_spaces_and_parse_nums(s: &str) -> Vec<u64> {
+	s.split_whitespace()
+		.map(|number_str| number_str.parse())
+		.flatten()
+		.collect()
 }
 
-pub fn part1(reader: &mut Box<dyn Read>) -> u32 {
-    let mut buf_reader = BufReader::new(reader);
-    let mut header = String::new();
+fn read_seed_nums(reader: &mut BufReader<&mut Box<dyn Read>>) -> Vec<u64> {
+	let mut header = String::new();
 
-    buf_reader
-        .read_line(&mut header)
-        .expect("Input should start with a header specifying seed numbers");
+	reader
+		.read_line(&mut header)
+		.expect("Input should start with a header specifying seed numbers");
 
-    let seed_num_section = header
-        .strip_prefix("seeds: ")
-        .expect("Header should be of the form 'seeds: X Y Z'");
+	let seed_num_section = header
+		.strip_prefix("seeds: ")
+		.expect("Header should be of the form 'seeds: X Y Z'");
 
-    let seed_nums = split_on_spaces_and_parse_nums(&seed_num_section);
-    let mut remaining_input = String::new();
+	split_on_spaces_and_parse_nums(&seed_num_section)
+}
 
-    buf_reader
-        .read_to_string(&mut remaining_input)
-        .expect("Input should have more content after header");
+fn read_seed_maps(reader: &mut BufReader<&mut Box<dyn Read>>) -> HashMap<String, SeedMap> {
+	let mut buffer = String::new();
 
-    let maps: HashMap<String, SeedMap> = remaining_input
-        .split("\n\n")
-        .map(|section| {
-            let map = SeedMap::from(section.trim());
-            (map.source.clone(), map)
-        })
-        .collect();
+	reader
+		.read_to_string(&mut buffer)
+		.expect("Input should have more content after header");
 
-    for n in seed_nums {
-        println!("{}: {}", n, maps["seed"].lookup(n))
-    }
-    todo!()
+	buffer
+		.split("\n\n")
+		.map(|section| {
+			let map = SeedMap::from(section.trim());
+			(map.dest.clone(), map)
+		})
+		.collect()
+}
+
+pub fn part1(reader: &mut Box<dyn Read>) -> u64 {
+	let mut buf_reader = BufReader::new(reader);
+	let seed_nums = read_seed_nums(&mut buf_reader);
+	let seed_maps = read_seed_maps(&mut buf_reader);
+	seed_nums.iter().map(|num| chained_lookup_part1(&seed_maps, *num)).min().expect("Minimum value should exist")
+}
+
+pub fn part2(reader: &mut Box<dyn Read>) -> u64 {
+	let mut buf_reader = BufReader::new(reader);
+	let seed_nums = read_seed_nums(&mut buf_reader);
+	let seed_maps = read_seed_maps(&mut buf_reader);
+	seed_nums.iter().map(|num| chained_lookup_part1(&seed_maps, *num)).min().expect("Minimum value should exist")
+}
+
+
+
+fn chained_lookup_part1(seed_maps: &HashMap<String, SeedMap>, seed_num: u64) -> u64 {
+	let mut last_lookup_result = seed_num;
+	let targets = ["soil", "fertilizer", "water", "light", "temperature", "humidity", "location"];
+
+	for target in targets {
+		last_lookup_result = seed_maps[target].lookup(last_lookup_result);
+	}
+	last_lookup_result
+}
+
+fn chained_lookup_part2(seed_maps: &HashMap<String, SeedMap>, location_num: u64) -> u64 {
+	let mut last_lookup_result = location_num;
+	let targets = ["soil", "fertilizer", "water", "light", "temperature", "humidity", "location"];
+
+	for target in targets.iter().rev() {
+		last_lookup_result = seed_maps[*target].lookup(last_lookup_result);
+	}
+	last_lookup_result
 }
