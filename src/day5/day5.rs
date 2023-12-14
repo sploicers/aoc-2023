@@ -79,7 +79,7 @@ fn split_on_spaces_and_parse_nums(s: &str) -> Vec<u64> {
 		.collect()
 }
 
-fn read_seed_nums(reader: &mut BufReader<&mut Box<dyn Read>>) -> Vec<u64> {
+fn read_seed_nums(reader: &mut BufReader<Box<dyn Read>>) -> Vec<u64> {
 	let mut header = String::new();
 
 	reader
@@ -93,7 +93,7 @@ fn read_seed_nums(reader: &mut BufReader<&mut Box<dyn Read>>) -> Vec<u64> {
 	split_on_spaces_and_parse_nums(&seed_num_section)
 }
 
-fn read_seed_maps(reader: &mut BufReader<&mut Box<dyn Read>>) -> HashMap<String, SeedMap> {
+fn read_seed_maps(reader: &mut BufReader<Box<dyn Read>>) -> HashMap<String, SeedMap> {
 	let mut buffer = String::new();
 
 	reader
@@ -109,20 +109,17 @@ fn read_seed_maps(reader: &mut BufReader<&mut Box<dyn Read>>) -> HashMap<String,
 		.collect()
 }
 
-pub fn part1(reader: &mut Box<dyn Read>) -> u64 {
-	let mut buf_reader = BufReader::new(reader);
-	let seed_nums = read_seed_nums(&mut buf_reader);
-	let seed_maps = read_seed_maps(&mut buf_reader);
+pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
+	let seed_nums = read_seed_nums(reader);
+	let seed_maps = read_seed_maps(reader);
 	seed_nums.iter().map(|num| chained_lookup_part1(&seed_maps, *num)).min().expect("Minimum value should exist")
 }
 
-pub fn part2(reader: &mut Box<dyn Read>) -> u64 {
-	let mut buf_reader = BufReader::new(reader);
-	let seed_nums = read_seed_nums(&mut buf_reader);
-	let seed_maps = read_seed_maps(&mut buf_reader);
+pub fn part2(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
+	let seed_nums = read_seed_nums(reader);
+	let seed_maps = read_seed_maps(reader);
 	seed_nums.iter().map(|num| chained_lookup_part1(&seed_maps, *num)).min().expect("Minimum value should exist")
 }
-
 
 
 fn chained_lookup_part1(seed_maps: &HashMap<String, SeedMap>, seed_num: u64) -> u64 {
