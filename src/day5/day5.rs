@@ -93,6 +93,13 @@ fn read_seed_nums(reader: &mut BufReader<Box<dyn Read>>) -> Vec<u64> {
 	split_on_spaces_and_parse_nums(&seed_num_section)
 }
 
+fn read_seed_ranges(reader: &mut BufReader<Box<dyn Read>>) -> Vec<Range> {
+	read_seed_nums(reader).chunks(2).map(|chunk| Range {
+		start: *chunk.first().expect("Expected start of seed range"),
+		end: *chunk.last().expect("Expected end of seed range")
+	}).collect()
+}
+
 fn read_seed_maps(reader: &mut BufReader<Box<dyn Read>>) -> HashMap<String, SeedMap> {
 	let mut buffer = String::new();
 
@@ -116,9 +123,9 @@ pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
 }
 
 pub fn part2(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
-	let seed_nums = read_seed_nums(reader);
+	let seed_ranges = read_seed_ranges(reader);
 	let seed_maps = read_seed_maps(reader);
-	seed_nums.iter().map(|num| chained_lookup_part1(&seed_maps, *num)).min().expect("Minimum value should exist")
+	todo!()
 }
 
 
