@@ -20,7 +20,7 @@
         }
       },
       "args": [
-        "input/day5.txt"
+        "input/day6.txt"
       ],
       "cwd": "${workspaceFolder}"
     },
