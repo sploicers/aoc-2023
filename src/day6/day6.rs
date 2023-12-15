@@ -36,17 +36,20 @@ fn clamp(min: f64, max: f64) -> (u64, u64) {
 	}
 }
 
+fn get_clamped_bounds(distance: u64, time: u64) -> (u64, u64) {
+	let lower_root = lower_bound(distance, time);
+	let upper_root = upper_bound(distance, time);
+	clamp(lower_root, upper_root)
+}
+
 pub fn part1(lines: Vec<String>) -> u64 {
 	let times = strip_prefix_and_parse_nums("Time:", lines.first());
 	let distances = strip_prefix_and_parse_nums("Distance:", lines.last());
-
 	let races = times.iter().zip(distances);
 	let mut product = 1;
 
 	for (duration, distance_record) in races {
-		let lower_root = lower_bound(distance_record, *duration);
-		let upper_root = upper_bound(distance_record, *duration);
-		let (lower, upper) = clamp(lower_root, upper_root);
+		let (lower, upper) = get_clamped_bounds(distance_record, *duration);
 		let num_ways = upper - lower + 1;
 		product *= num_ways;
 	}
@@ -56,9 +59,7 @@ pub fn part1(lines: Vec<String>) -> u64 {
 pub fn part2(lines: Vec<String>) -> u64 {
 	let time = strip_prefix_join_on_whitespace_and_parse_num("Time:", lines.first());
 	let distance = strip_prefix_join_on_whitespace_and_parse_num("Distance:", lines.last());
-	let lower_root = lower_bound(distance, time);
-	let upper_root = upper_bound(distance, time);
-	let (lower, upper) = clamp(lower_root, upper_root);
+	let (lower, upper) = get_clamped_bounds(distance, time);
 	let num_ways = upper - lower + 1;
 	num_ways
 }

@@ -7,5 +7,5 @@ mod day6;
 mod util;
 
 fn main() {
-    println!("{}", day6::part2(read_input_lines().collect()));
+    println!("{}", day6::part1(read_input_lines().collect()));
 }
