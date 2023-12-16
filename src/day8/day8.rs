@@ -1,6 +1,9 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::io::{BufRead, BufReader, Read};
+use std::{
+    collections::HashMap,
+    io::{BufRead, BufReader, Read},
+};
 
 type Node = (String, String, String);
 
@@ -8,23 +11,21 @@ static NODE_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(\w{3}) = \((\w{3}), (\w{3})\)").expect("Invalid regex"));
 
 pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
-    let mut directions_line = String::new();
-    let directions = read_directions(reader, &mut directions_line);
+    let directions = read_directions(reader);
+    let map = read_nodes(reader);
+    let mut current_pos = "AAA";
     let mut num_moves = 0;
-    let mut next_pos = String::from("AAA");
 
-    for dir in directions {
-        let mut next_line = String::new();
-        let (pos, left, right) = read_nodes_until(next_pos, reader, &mut next_line);
-
-        if pos == "ZZZ" {
+    for dir in directions.iter().cycle() {
+        if current_pos == "ZZZ" {
             break;
         }
 
-        next_pos = match dir {
+        let (left, right) = &map[current_pos];
+        current_pos = match dir {
             'L' => left,
             'R' => right,
-            _ => panic!("Directions should only consist of L/R"),
+            _ => panic!("Directions should consist of only L/R"),
         };
         num_moves += 1;
     }
@@ -32,32 +33,61 @@ pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
     num_moves
 }
 
-fn read_directions<'a>(
-    reader: &mut BufReader<Box<dyn Read>>,
-    buf: &'a mut String,
-) -> impl Iterator<Item = char> + Clone + 'a {
+pub fn part2(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
+    let directions = read_directions(reader);
+    let map = read_nodes(reader);
+    let mut num_moves = 0;
+
+    let mut current_positions: Vec<&String> =
+        map.keys().filter(|node| node.ends_with("A")).collect();
+
+    for dir in directions.iter().cycle() {
+        if current_positions.iter().all(|pos| pos.ends_with("Z")) {
+            break;
+        }
+
+        current_positions = current_positions
+            .iter()
+            .map(|pos| {
+                let (left, right) = &map[*pos];
+                match dir {
+                    'L' => left,
+                    'R' => right,
+                    _ => panic!("Directions should consist of only L/R"),
+                }
+            })
+            .collect();
+
+        num_moves += 1;
+    }
+
+    num_moves
+}
+
+fn read_directions(reader: &mut BufReader<Box<dyn Read>>) -> Vec<char> {
+    let mut buf = String::new();
     reader
-        .read_line(buf)
+        .read_line(&mut buf)
         .expect("Input should begin with a line of directions");
 
-    let mut empty_line = String::new();
-    let _ = reader.read_line(&mut empty_line);
-    buf.chars().cycle()
+    let _ = reader.read_line(&mut buf);
+    buf.trim().chars().collect()
 }
 
-fn read_nodes_until(goal: String, reader: &mut BufReader<Box<dyn Read>>, buf: &mut String) -> Node {
-    loop {
-        let (pos, left, right) = read_node(reader, buf);
-        if pos == goal {
-            return (pos, left, right);
-        }
-    }
+fn read_nodes(reader: &mut BufReader<Box<dyn Read>>) -> HashMap<String, (String, String)> {
+    reader
+        .lines()
+        .flat_map(Result::ok)
+        .map(|line| {
+            let (pos, left, right) = read_node(&line);
+            (pos, (left, right))
+        })
+        .collect()
 }
 
-fn read_node(reader: &mut BufReader<Box<dyn Read>>, buf: &mut String) -> Node {
-    reader.read_line(buf).expect("Input should be non-empty");
+fn read_node(line: &String) -> Node {
     let caps = NODE_REGEX
-        .captures(&buf)
+        .captures(&line)
         .expect("Line should be of the form (ABC) = (DEF, XYZ)");
 
     let [pos, left, right]: [String; 3] = caps
@@ -70,6 +100,5 @@ fn read_node(reader: &mut BufReader<Box<dyn Read>>, buf: &mut String) -> Node {
         .try_into()
         .expect("Failed to extract regex capture groups");
 
-    buf.clear();
     (pos, left, right)
 }

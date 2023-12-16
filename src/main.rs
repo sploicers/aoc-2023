@@ -9,5 +9,5 @@ mod day8;
 mod util;
 
 fn main() {
-    println!("{}", day8::part1(&mut get_input_reader()));
+    println!("{}", day8::part2(&mut get_input_reader()));
 }
