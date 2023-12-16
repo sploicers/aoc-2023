@@ -8,5 +8,5 @@ mod day7;
 mod util;
 
 fn main() {
-    println!("{}", day6::part1(read_input_lines().collect()));
+    println!("{}", day7::part1(read_input_lines()));
 }
