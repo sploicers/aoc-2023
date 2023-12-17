@@ -6,18 +6,22 @@ use std::{
 };
 
 type Node = (String, String, String);
+type Map = HashMap<String, (String, String)>;
 
 static NODE_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(\w{3}) = \((\w{3}), (\w{3})\)").expect("Invalid regex"));
 
-pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
-    let directions = read_directions(reader);
-    let map = read_nodes(reader);
-    let mut current_pos = "AAA";
+fn solve(
+    start_pos: &str,
+    map: &Map,
+    directions: &Vec<char>,
+    stop_cond: impl Fn(&String) -> bool,
+) -> u64 {
+    let mut current_pos = &String::from(start_pos);
     let mut num_moves = 0;
 
     for dir in directions.iter().cycle() {
-        if current_pos == "ZZZ" {
+        if stop_cond(current_pos) {
             break;
         }
 
@@ -33,35 +37,21 @@ pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
     num_moves
 }
 
+pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
+    let directions = read_directions(reader);
+    let map = read_nodes(reader);
+    solve("AAA", &map, &directions, |pos| pos == "ZZZ")
+}
+
 pub fn part2(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
     let directions = read_directions(reader);
     let map = read_nodes(reader);
-    let mut num_moves = 0;
+    let current_positions = map.keys().filter(|node| node.ends_with("A"));
 
-    let mut current_positions: Vec<&String> =
-        map.keys().filter(|node| node.ends_with("A")).collect();
-
-    for dir in directions.iter().cycle() {
-        if current_positions.iter().all(|pos| pos.ends_with("Z")) {
-            break;
-        }
-
-        current_positions = current_positions
-            .iter()
-            .map(|pos| {
-                let (left, right) = &map[*pos];
-                match dir {
-                    'L' => left,
-                    'R' => right,
-                    _ => panic!("Directions should consist of only L/R"),
-                }
-            })
-            .collect();
-
-        num_moves += 1;
-    }
-
-    num_moves
+    current_positions
+        .map(|pos| solve(pos, &map, &directions, |pos| pos.ends_with("Z")))
+        .reduce(lcm)
+        .expect("Should be able to reduce the step count array to its least-common-multiple")
 }
 
 fn read_directions(reader: &mut BufReader<Box<dyn Read>>) -> Vec<char> {
@@ -86,11 +76,9 @@ fn read_nodes(reader: &mut BufReader<Box<dyn Read>>) -> HashMap<String, (String,
 }
 
 fn read_node(line: &String) -> Node {
-    let caps = NODE_REGEX
+    let [pos, left, right]: [String; 3] = NODE_REGEX
         .captures(&line)
-        .expect("Line should be of the form (ABC) = (DEF, XYZ)");
-
-    let [pos, left, right]: [String; 3] = caps
+        .expect("Line should be of the form (ABC) = (DEF, XYZ)")
         .iter()
         .skip(1)
         .take(3)
@@ -101,4 +89,16 @@ fn read_node(line: &String) -> Node {
         .expect("Failed to extract regex capture groups");
 
     (pos, left, right)
+}
+
+fn gcd(a: u64, b: u64) -> u64 {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
+    }
+}
+
+fn lcm(a: u64, b: u64) -> u64 {
+    a * (b / gcd(a, b))
 }
