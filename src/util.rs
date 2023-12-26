@@ -3,7 +3,6 @@ use std::{
 	fs::File,
 	io::{self, BufRead, BufReader, Read},
 };
-use fancy_regex::RegexBuilder;
 use regex::Regex;
 
 pub fn read_input_lines() -> impl Iterator<Item = String> {

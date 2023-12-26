@@ -12,9 +12,10 @@ mod day6;
 mod day7;
 mod day8;
 mod day9;
+mod day11;
 mod day19;
 mod util;
 
 fn main() {
-    println!("{}", day19::part1(&mut get_input_reader()));
+    println!("{}", day11::part1(&mut get_input_reader()));
 }
