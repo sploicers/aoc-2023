@@ -3,18 +3,17 @@ use std::io::{BufReader, Read};
 
 #[derive(PartialEq, Eq, Clone, Hash, Debug)]
 struct Point {
-    pub x: u64,
-    pub y: u64,
+    pub x: u128,
+    pub y: u128,
 }
 
-struct GalaxyMap {
+struct GalaxyMap<const N: usize> {
     pub galaxies: Vec<Point>,
     pub x_vacant: Vec<bool>,
     pub y_vacant: Vec<bool>,
-    pub expansion_factor: usize,
 }
 
-impl GalaxyMap {
+impl<const N: usize> GalaxyMap<N> {
     pub fn from(reader: &mut BufReader<Box<dyn Read>>) -> Self {
         let mut buffer = String::new();
         reader
@@ -36,8 +35,8 @@ impl GalaxyMap {
                     x_vacant[x] = false;
                     y_vacant[y] = false;
                     galaxies.push(Point {
-                        x: x as u64,
-                        y: y as u64,
+                        x: x as u128,
+                        y: y as u128,
                     })
                 }
             }
@@ -46,25 +45,17 @@ impl GalaxyMap {
             galaxies,
             x_vacant,
             y_vacant,
-            expansion_factor: 1,
         }
     }
 
     pub fn expand(&self, a: &Point, b: &Point) -> Point {
-        let x_expansion =
-            (a.x..b.x).filter(|x| self.x_vacant[*x as usize]).count() * (self.expansion_factor - 1);
-
-        let y_expansion =
-            (a.y..b.y).filter(|y| self.y_vacant[*y as usize]).count() * (self.expansion_factor - 1);
+        let x_expansion = (a.x..b.x).filter(|x| self.x_vacant[*x as usize]).count() * (N - 1);
+        let y_expansion = (a.y..b.y).filter(|y| self.y_vacant[*y as usize]).count() * (N - 1);
 
         Point {
-            x: b.x + x_expansion as u64,
-            y: b.y + y_expansion as u64,
+            x: b.x + x_expansion as u128,
+            y: b.y + y_expansion as u128,
         }
-    }
-
-    pub fn set_expansion_factor(&mut self, val: usize) {
-        self.expansion_factor = val
     }
 
     pub fn all_galaxy_pairs(&self) -> Vec<(&Point, &Point)> {
@@ -72,16 +63,23 @@ impl GalaxyMap {
     }
 }
 
-pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> u64 {
-    let mut map = GalaxyMap::from(reader);
-    map.set_expansion_factor(2);
+pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> u128 {
+    let map = GalaxyMap::<2>::from(reader);
+    solve(map)
+}
 
+pub fn part2(reader: &mut BufReader<Box<dyn Read>>) -> u128 {
+    let map = GalaxyMap::<1000000>::from(reader);
+    solve(map)
+}
+
+fn solve<const N: usize>(map: GalaxyMap<N>) -> u128 {
     map.all_galaxy_pairs()
         .iter()
         .map(|(p0, p1)| manhattan_dist(&map.expand(p1, p0), &map.expand(p0, p1)))
         .sum()
 }
 
-fn manhattan_dist(p0: &Point, p1: &Point) -> u64 {
+fn manhattan_dist(p0: &Point, p1: &Point) -> u128 {
     p1.x.abs_diff(p0.x) + p1.y.abs_diff(p0.y)
 }
