@@ -37,7 +37,7 @@ impl<const N: usize> GalaxyMap<N> {
                     galaxies.push(Point {
                         x: x as u128,
                         y: y as u128,
-                    })
+                    });
                 }
             }
         }
