@@ -2,11 +2,11 @@
 #[macro_use]
 extern crate lazy_static;
 
-use util::read_input_lines;
+use util::get_input_reader;
 mod day1;
 mod day11;
 mod day12;
-// /mod day13;
+mod day13;
 mod day19;
 mod day2;
 mod day3;
@@ -19,5 +19,5 @@ mod day9;
 mod util;
 
 fn main() {
-    println!("{}", day7::part2(read_input_lines()));
+    println!("{}", day13::part1(&mut get_input_reader()));
 }
