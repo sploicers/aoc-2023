@@ -41,12 +41,8 @@ fn num_valid_arrangements(state: SpringState) -> u64 {
     let num_arrangements_if_broken = match state.current_spring() {
         BROKEN | UNKNOWN => {
             if state.can_match_run() {
-                if state.current_run_length() >= state.springs.len() {
-                    1
-                } else {
-                    let next_state = state.consume_run();
-                    num_valid_arrangements(next_state)
-                }
+                let next_state = state.consume_run();
+                num_valid_arrangements(next_state)
             } else {
                 0
             }
@@ -124,8 +120,10 @@ impl SpringState {
     }
 
     pub fn consume_run(&self) -> Self {
-        let run_length = self.run_lengths[0];
-        let remaining_springs = self.springs.clone()[(run_length + 1)..].to_vec();
+        let run_length = self.current_run_length();
+        let next_pos = (run_length + 1).min(self.springs.len() - 1);
+
+        let remaining_springs = self.springs.clone()[next_pos..].to_vec();
         let remaining_run_lengths = self.run_lengths.clone().into_iter().skip(1).collect();
 
         Self {
