@@ -6,6 +6,7 @@ use util::read_input_lines;
 mod day1;
 mod day11;
 mod day12;
+// /mod day13;
 mod day19;
 mod day2;
 mod day3;
@@ -18,5 +19,5 @@ mod day9;
 mod util;
 
 fn main() {
-    println!("{}", day12::part2(read_input_lines()));
+    println!("{}", day7::part1(read_input_lines()));
 }
