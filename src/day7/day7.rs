@@ -6,11 +6,11 @@ static CARD_VALUES: Lazy<HashMap<char, u32>> =
     Lazy::new(|| HashMap::from([('A', 14), ('K', 13), ('Q', 12), ('J', 11), ('T', 10)]));
 
 static CARD_VALUES_PART2: Lazy<HashMap<char, u32>> =
-    Lazy::new(|| HashMap::from([('A', 13), ('K', 12), ('Q', 11), ('T', 10), ('J', 2)]));
+    Lazy::new(|| HashMap::from([('A', 13), ('K', 12), ('Q', 11), ('T', 10), ('J', 1)]));
 
 static PART2: bool = true;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum HandType {
     HighCard,
     OnePair,
@@ -30,13 +30,17 @@ struct Hand {
 
 impl HandType {
     pub fn from(s: &str) -> Self {
-        let use_jokers = PART2 && s.contains('J');
+        if PART2 {
+            let labels = CARD_VALUES_PART2
+                .clone()
+                .into_keys()
+                .chain((0..=9).map(|n| char::from_digit(n, 10).unwrap()))
+                .collect::<Vec<_>>();
 
-        if use_jokers {
-            CARD_VALUES_PART2
-                .keys()
-                .map(|card_type| {
-                    let new_str = s.replace('J', &card_type.to_string());
+            let potential_hand_types = labels
+                .iter()
+                .map(|label| {
+                    let new_str = s.replace('J', &label.to_string());
 
                     let lookup = unique_char_dict(&new_str);
                     let num_unique_cards = lookup.len();
@@ -48,8 +52,12 @@ impl HandType {
 
                     determine_hand_type(max_duplicates, num_unique_cards)
                 })
+                .collect::<Vec<_>>();
+
+            *potential_hand_types
+                .iter()
                 .max()
-                .expect("Failed on part 2")
+                .expect("Failed to maximise hand type via joker")
         } else {
             let lookup = unique_char_dict(s);
             let num_unique_cards = lookup.len();
@@ -190,4 +198,11 @@ pub fn part1(lines: impl Iterator<Item = String>) -> u64 {
         total += (rank * hand.bid) as u64
     }
     total
+}
+
+pub fn part2(lines: impl Iterator<Item = String>) -> u64 {
+    if !PART2 {
+        panic!("Invoked part2 without setting flag");
+    }
+    part1(lines)
 }
