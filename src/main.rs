@@ -18,5 +18,5 @@ mod day9;
 mod util;
 
 fn main() {
-    println!("{}", day12::part1(read_input_lines()));
+    println!("{}", day12::part2(read_input_lines()));
 }
