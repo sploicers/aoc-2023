@@ -1,27 +1,24 @@
-use std::{
-    io::{BufReader, Read},
-    str::FromStr,
-};
+use std::io::{BufReader, Read};
 
 const HORIZONTAL_MULTIPLIER: usize = 100;
 
 #[derive(Clone)]
-struct MySpecialIterator {
-    lines: Vec<String>,
+struct MySpecialIterator<'a> {
+    lines: &'a Vec<&'a str>,
     pos: usize,
 }
 
-struct MySpecialIteratorMirrored {
-    items: Vec<String>,
+struct MySpecialIteratorMirrored<'a> {
+    items: &'a Vec<&'a str>,
     mirror_pos: usize,
     left: i32,
     right: i32,
 }
 
-impl MySpecialIterator {
+impl<'a> MySpecialIterator<'a> {
     pub fn mirrored_around(&self, pos: usize) -> MySpecialIteratorMirrored {
         MySpecialIteratorMirrored {
-            items: self.lines.clone(),
+            items: self.lines,
             mirror_pos: pos,
             left: (pos - 1) as i32,
             right: pos as i32,
@@ -29,51 +26,37 @@ impl MySpecialIterator {
     }
 }
 
-impl Iterator for MySpecialIterator {
-    type Item = (String, String);
+impl<'a> Iterator for MySpecialIterator<'a> {
+    type Item = (&'a str, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos >= self.lines.len() - 1 {
             None
         } else {
-            let next = Some((
-                self.lines[self.pos].clone(),
-                self.lines[self.pos + 1].clone(),
-            ));
+            let next = Some((self.lines[self.pos], self.lines[self.pos + 1]));
             self.pos = self.pos + 1;
             next
         }
     }
 }
 
-impl Iterator for MySpecialIteratorMirrored {
-    type Item = (String, String);
+impl<'a> Iterator for MySpecialIteratorMirrored<'a> {
+    type Item = (&'a str, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
         let n = self.items.len();
 
-        if self.right == n as i32 || self.left == -1 {
+        if self.right > (n - 1) as i32 || self.left < 0 {
             None
         } else {
             let next = Some((
-                self.items[self.left as usize].clone(),
-                self.items[self.right as usize].clone(),
+                self.items[self.left as usize],
+                self.items[self.right as usize],
             ));
             self.left = self.left - 1;
-            self.right = self.right.min((n - 1) as i32) + 1;
+            self.right = self.right + 1;
             next
         }
-    }
-}
-
-impl FromStr for MySpecialIterator {
-    type Err = Box<dyn std::error::Error>;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self {
-            lines: s.lines().map(String::from).collect(),
-            pos: 0,
-        })
     }
 }
 
@@ -87,16 +70,16 @@ pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> usize {
 }
 
 fn solve_single_mirror(section: &str) -> usize {
-    let lines = section.lines().map(String::from).collect::<Vec<_>>();
-    let lines_rotated = rotate(lines.clone());
+    let lines = section.lines().collect::<Vec<_>>();
+    let lines_rotated = rotate(&lines);
     let rot_len = lines_rotated.len();
 
     let mut vertical_iterator = MySpecialIterator {
-        lines: lines.clone(),
+        lines: &lines,
         pos: 0,
     };
     let mut horizontal_iterator = MySpecialIterator {
-        lines: lines_rotated,
+        lines: &lines_rotated.iter().map(|s| &**s).collect(),
         pos: 0,
     };
 
@@ -121,7 +104,7 @@ fn get_mirror_line_pos(iter: &mut MySpecialIterator) -> Option<usize> {
     })
 }
 
-fn rotate(lines: Vec<String>) -> Vec<String> {
+fn rotate<'a>(lines: &Vec<&'a str>) -> Vec<String> {
     let width = lines.first().map(|line| line.len()).unwrap_or(0);
     let height = lines.len();
     let lines_joined = lines.join("");
