@@ -3,6 +3,9 @@ use std::{
     str::FromStr,
 };
 
+const HORIZONTAL_MULTIPLIER: usize = 100;
+
+#[derive(Clone)]
 struct MySpecialIterator {
     lines: Vec<String>,
     pos: usize,
@@ -80,41 +83,42 @@ pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> usize {
         .read_to_string(&mut buffer)
         .expect("Failed to read input");
 
-    let mut total = 0;
-    let horizontal_multiplier = 100;
+    buffer.split("\n\n").map(solve_single_mirror).sum()
+}
 
-    for section in buffer.split("\n\n") {
-        let lines = section.lines().map(String::from).collect::<Vec<_>>();
-        let lines_rotated = rotate(lines.clone());
+fn solve_single_mirror(section: &str) -> usize {
+    let lines = section.lines().map(String::from).collect::<Vec<_>>();
+    let lines_rotated = rotate(lines.clone());
+    let rot_len = lines_rotated.len();
 
-        let mut vertical_iterator = MySpecialIterator {
-            lines: lines.clone(),
-            pos: 0,
-        };
-        let mut horizontal_iterator = MySpecialIterator {
-            lines: lines_rotated,
-            pos: 0,
-        };
+    let mut vertical_iterator = MySpecialIterator {
+        lines: lines.clone(),
+        pos: 0,
+    };
+    let mut horizontal_iterator = MySpecialIterator {
+        lines: lines_rotated,
+        pos: 0,
+    };
 
-        total = total
-            + if let Some(horizontal) = get_mirror_line_pos(&mut vertical_iterator) {
-                horizontal * horizontal_multiplier
-            } else if let Some(vertical) = get_mirror_line_pos(&mut horizontal_iterator) {
-                vertical + 1
-            } else {
-                0
-            };
+    if let Some(horizontal) = get_mirror_line_pos(&mut vertical_iterator) {
+        horizontal * HORIZONTAL_MULTIPLIER
+    } else if let Some(vertical) = get_mirror_line_pos(&mut horizontal_iterator) {
+        rot_len - vertical
+    } else {
+        0
     }
-    total
 }
 
 fn get_mirror_line_pos(iter: &mut MySpecialIterator) -> Option<usize> {
-    iter.position(|(left, right)| left == right)
-        .and_then(|pos| {
-            iter.mirrored_around(pos + 1)
-                .all(|(left, right)| left == right)
-                .then_some(pos + 1)
-        })
+    let mut potential_mirror_lines = iter
+        .clone()
+        .enumerate()
+        .filter_map(|(i, (left, right))| (left == right).then_some(i + 1));
+
+    potential_mirror_lines.find(|pos| {
+        iter.mirrored_around(*pos)
+            .all(|(left, right)| left == right)
+    })
 }
 
 fn rotate(lines: Vec<String>) -> Vec<String> {
