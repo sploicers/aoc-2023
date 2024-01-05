@@ -61,16 +61,30 @@ impl<'a> Iterator for MySpecialIteratorMirrored<'a> {
 }
 
 pub fn part1(reader: &mut BufReader<Box<dyn Read>>) -> usize {
+    solve(reader, &|left, right| left == right)
+}
+
+pub fn part2(reader: &mut BufReader<Box<dyn Read>>) -> usize {
+    solve(reader, &differ_by_at_most_one_char)
+}
+
+pub fn solve(
+    reader: &mut BufReader<Box<dyn Read>>,
+    predicate: &impl Fn(&str, &str) -> bool,
+) -> usize {
     let mut buffer = String::new();
     reader
         .read_to_string(&mut buffer)
         .expect("Failed to read input");
 
-    buffer.split("\n\n").map(solve_single_mirror).sum()
+    buffer
+        .split("\n\n")
+        .map(|mirror| solve_single_mirror(mirror, predicate))
+        .sum()
 }
 
-fn solve_single_mirror(section: &str) -> usize {
-    let lines = section.lines().collect::<Vec<_>>();
+fn solve_single_mirror(mirror: &str, predicate: &impl Fn(&str, &str) -> bool) -> usize {
+    let lines = mirror.lines().collect::<Vec<_>>();
     let lines_rotated = rotate(&lines);
     let rot_len = lines_rotated.len();
 
@@ -83,28 +97,31 @@ fn solve_single_mirror(section: &str) -> usize {
         pos: 0,
     };
 
-    if let Some(horizontal) = get_mirror_line_pos(&mut vertical_iterator) {
+    if let Some(horizontal) = find_mirror_line(&mut vertical_iterator, predicate) {
         horizontal * HORIZONTAL_MULTIPLIER
-    } else if let Some(vertical) = get_mirror_line_pos(&mut horizontal_iterator) {
+    } else if let Some(vertical) = find_mirror_line(&mut horizontal_iterator, predicate) {
         rot_len - vertical
     } else {
         0
     }
 }
 
-fn get_mirror_line_pos(iter: &mut MySpecialIterator) -> Option<usize> {
+fn find_mirror_line(
+    iter: &mut MySpecialIterator,
+    predicate: impl Fn(&str, &str) -> bool,
+) -> Option<usize> {
     let mut potential_mirror_lines = iter
         .clone()
         .enumerate()
-        .filter_map(|(i, (left, right))| (left == right).then_some(i + 1));
+        .filter_map(|(i, (left, right))| predicate(left, right).then_some(i + 1));
 
     potential_mirror_lines.find(|pos| {
         iter.mirrored_around(*pos)
-            .all(|(left, right)| left == right)
+            .all(|(left, right)| predicate(left, right))
     })
 }
 
-fn rotate<'a>(lines: &Vec<&'a str>) -> Vec<String> {
+fn rotate(lines: &Vec<&str>) -> Vec<String> {
     let width = lines.first().map(|line| line.len()).unwrap_or(0);
     let height = lines.len();
     let lines_joined = lines.join("");
@@ -121,4 +138,22 @@ fn rotate<'a>(lines: &Vec<&'a str>) -> Vec<String> {
     temp.chunks(height)
         .map(|chars| chars.iter().collect())
         .collect::<Vec<_>>()
+}
+
+fn differ_by_at_most_one_char(a: &str, b: &str) -> bool {
+    hamming_distance(to_bits(a), to_bits(b)) <= 1
+}
+
+fn to_bits(line: &str) -> i32 {
+    line.chars()
+        .map(|c| match c {
+            '.' => 0,
+            '#' => 1,
+            _ => panic!("Encountered invalid char '{}' in input", c),
+        })
+        .fold(0, |acc, n| (acc << 1) | n)
+}
+
+fn hamming_distance(x: i32, y: i32) -> u32 {
+    (x ^ y).count_ones()
 }
